@@ -1,0 +1,136 @@
+@page "/v_cliente"
+@using AppEmpresa.Data
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@inject IHttpClientFactory ClientFactory
+<!-- inject NavigationManager _navigationManager -->
+@inject IJSRuntime JSRuntime
+<h1>Formulario Clientes</h1>
+
+@if ( getClienteError || icliente is null)
+{
+    <p>Unable to get branches from GitHub. Please try again later.</p>
+}
+else
+{
+<form>
+<label for="label_id" class="form-label">ID</label>
+<input @bind="varid_cliente" class="form-control" type="number" placeholder="id"  readonly/> 
+<label for="label_nombres" class="form-label">Nombres</label>   
+<input @bind="varNombres" class="form-control" placeholder="Nombres" />
+<label for="label_apellidos" class="form-label">Apellidos</label>
+<input @bind="varApellidos" class="form-control" placeholder="Apellidos" />
+<label for="label_direccion" class="form-label">Direccion</label>
+<input @bind="varDireccion" class="form-control" placeholder="Direccion" />
+<label for="label_telefono" class="form-label">Telefono</label>
+<input @bind="varTelefono" class="form-control" placeholder="Telefono" />
+<label for="label_fn" class="form-label">Fecha de Nacimineto</label>
+<input @bind="varfn" type="date" class="form-control" placeholder="Fecha Nacimiento" />
+    <br>
+<button class="btn btn-info"  @onclick="Create">Crear</button>
+<button class="btn btn-success" @onclick="Put">Modificar</button>    
+<button class="btn btn-danger"  @onclick="Delete">Eliminar</button>    
+  </form>
+  
+    <table class="table">
+         <tbody>
+            <tr>
+                <th>accion</th>
+              <th>Nombres</th> 
+              <th>Apellidos</th>
+              <th>Direccion</th>
+              <th>Telefono</th>
+              <th>Nacimiento</th>
+              </tr>     
+            </tbody>
+        @foreach (var cliente in icliente)
+        {
+           
+            <tr>
+                <td><button class="btn btn-info" @onclick ="(() => enviarParametros(cliente.Id_clientes,cliente.Nombres,cliente.Apellidos,cliente.Direccion,cliente.Telefono,cliente.Fecha_nacimiento))"><i class="oi oi-pencil"></i></button></td>
+            <td>@cliente.Nombres</td>
+            <td>@cliente.Apellidos</td>
+            <td>@cliente.Direccion</td>
+            <td>@cliente.Telefono</td>
+            <td> @cliente.Fecha_nacimiento </td>
+            </tr>
+        }
+    </table>
+}
+
+
+  
+    @code {
+        private string? url = "https://localhost:7167/api/Clientes";
+    private string? varNombres,varApellidos,varDireccion,varTelefono;
+    private Int32 varid_cliente;
+    private DateTime? varfn;
+   void enviarParametros(int idC,string? nom,string? ape,string? dir,string? tel,DateTime? fn){
+        varid_cliente = idC;
+        varNombres = nom;
+        varApellidos = ape;
+        varDireccion = dir;
+        varTelefono = tel;
+        varfn  =  fn;
+
+   } 
+    
+    private async Task Create()
+    {
+        var client = ClientFactory.CreateClient();
+
+        var addItem = new Cliente { Id_clientes = varid_cliente, Nombres = varNombres,Apellidos = varApellidos,Direccion = varDireccion,Telefono=varTelefono,Fecha_nacimiento=varfn};
+        await client.PostAsJsonAsync(url, addItem);
+        await OnInitializedAsync();
+        //_navigationManager.NavigateTo("call-web-api",true);
+    }
+    private async Task Put()
+    {
+        var client = ClientFactory.CreateClient();
+        var addItem = new Cliente { Id_clientes = varid_cliente, Nombres = varNombres,Apellidos = varApellidos,Direccion = varDireccion,Telefono=varTelefono,Fecha_nacimiento=varfn};
+        await client.PutAsJsonAsync($"{url}/{varid_cliente}", addItem);
+        await OnInitializedAsync();
+    }
+    private async Task Delete()
+    {
+        var client = ClientFactory.CreateClient();
+        await client.DeleteAsync($"{url}/{varid_cliente}");
+        await OnInitializedAsync();
+    }
+
+     
+
+    
+    private IEnumerable<Cliente>? icliente = Array.Empty<Cliente>();
+      
+    private bool getClienteError;
+    private bool shouldRender;
+
+    protected override bool ShouldRender() => shouldRender;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get,url);
+        request.Headers.Add("Accept", "application/vnd.github.v3+json");
+        request.Headers.Add("User-Agent", "HttpClientFactory-Sample");
+
+        var client = ClientFactory.CreateClient();
+
+        var response = await client.SendAsync(request);
+
+        if (response.IsSuccessStatusCode)
+        {
+            using var responseStream = await response.Content.ReadAsStreamAsync();
+            icliente = await JsonSerializer.DeserializeAsync
+                <IEnumerable<Cliente>>(responseStream);
+        }
+        else
+        {
+            getClienteError = true;
+        }
+
+        shouldRender = true;
+    }
+ 
+    
+}
